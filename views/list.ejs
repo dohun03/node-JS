@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <title>Node JS</title>
+  <style>
+  html { height: 100%; }
+  body { height: 100%; margin: 0; padding: 0; }
+  .__body__ { padding: 120px 340px 40px 340px; height:100%; background-color:#f0f0f0; overflow: auto; /* 내용이 넘칠 경우 스크롤바 표시 */ }
+  
+  /* 미디어 쿼리를 사용하여 화면 크기에 따라 스타일 변경 */
+  @media (max-width: 768px) {
+      .__body__ {
+          padding: 80px 20px; /* 작은 화면에서 패딩 조정 */
+      }
+  }
+  .navbar {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 1000;
+  }
+  .none {
+      display:none;
+  }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg bg-body-tertiary">
+  <div class="container-fluid">
+      <a class="navbar-brand" href="/">
+      <img src="/dhoutside.png" style="width:30px;"> <!-- 이미지 경로 -->
+      <b><i>dhoutside.com</i></b>
+      </a>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <% if(authStatus){ %>
+        <li class="nav-item dropdown">
+          <div class="nav-link dropdown-toggle" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa fa-user-circle-o" aria-hidden="true"></i> <b><%= authStatus %></b>님
+          </div>
+          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+            <li><a class="dropdown-item" href="/settings"><i class="fa fa-cog" aria-hidden="true"></i> 설정</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/logout"><i class="fa fa-sign-out" aria-hidden="true"></i> 로그아웃</a></li>
+          </ul>
+        </li>
+        <% } else { %>
+        <li class="nav-item">
+        <a class="nav-link active" aria-current="page" href="/login"><i class="fa fa-user-circle-o" aria-hidden="true"></i> 로그인/회원가입</a>
+        </li>
+        <% } %>
+      </ul>
+      </div>
+  </div>
+  </nav>
+  <div class="__body__">
+    <div class="info" style="width:100%; margin-bottom: 10px;">
+        <a href="/edit"><button type="button" class="btn btn-dark" id="write-button"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> 글쓰기</button></a>                 
+        <select class="form-select form-select-sm line" aria-label="Small select example" style="display:inline; width:100px;">
+          <%- selectOptionsHtml %>
+        </select>
+        <form role="search" style="display:inline; margin-left:10px; margin-right:10px;">
+          <input class="form-control me-2" style="max-width:300px;display:inline;" type="search" placeholder="Search" aria-label="Search">
+          <button class="btn btn-outline-success" type="submit">Search</button>
+        </form>
+        <div class="float-end" id="pagination-controls"></div>
+        <div class="float-end">
+          <span style="margin-right:10px;"><%= currentPage %> / <%= page_total %></span>
+          <a href="<%= currentPage == 1 ? '#' : `/?page=${currentPage - 1}` %>"><button type="button" class="btn btn-dark" <%= currentPage == 1 ? 'disabled' : '' %>><i class="fa fa-arrow-left" aria-hidden="true"></i></button></a>
+          <a href="<%= page_total == currentPage ? '#' : `/?page=${currentPage + 1}` %>"><button type="button" class="btn btn-dark" <%= page_total == currentPage ? 'disabled' : '' %>><i class="fa fa-arrow-right" aria-hidden="true"></i></button></a>
+      </div>
+    </div>
+    <table class="table table-hover" style="border: 1px solid #ccc;">
+        <col style="width:70%;"><col><col style="width:10%;">
+        <thead>
+          <tr>
+            <th scope="col">제목</th>
+            <th style="text-align:center;" scope="col">작성자</th>
+            <th style="text-align:center;" scope="col">조회수</th>
+          </tr>
+        </thead>
+        <tbody class="table-group-divider">
+          <% data.forEach(item => { %>
+            <tr>
+              <td>
+                <a style="display:block; color:black; text-decoration-line: none; width:100%;" href="/view?id=<%= item.id %>"><%= item.subject %></a>
+              </td>
+              <td style="text-align:center;"><%= item.user %></td>
+              <td style="text-align:center;">523</td>
+            </tr>
+          <% }); %>
+        </tbody>
+    </table>
+    <div style="width:100%; background-color:white; padding:15px; border:5px solid black; border-radius:15px;">
+      <h3>2024.05.29 패치노트</h3>
+      <ul>
+        <li>EJS 템플릿 엔진을 사용하여 프론트와 백을 분리하는 작업</li>
+      </ul>
+      <hr/>
+      <h3>2024.05.17 패치노트</h3>
+      <ul>
+        <li>글 작성 시 작성자 아이디로 표기</li>
+        <li>글 작성은 로그인 했을 경우만 가능</li>
+      </ul>
+      <hr/>
+      <h3>2024.05.15 패치노트</h3>
+      <ul>
+        <li>로그인/회원가입 기능 완성</li>
+      </ul>
+      <hr/>
+      <h3>2024.04.23 패치노트</h3>
+      <ul>
+        <li>DHOUTSIDE 로고 추가(수제작)</li>
+        <li>줄(line) 설정 기능 추가</li>
+        <li>페이지 넘기기 기능 추가</li>
+        <li>수정 및 삭제는 작성자만 가능하도록 변경</li>
+      </ul>
+      <img src="/LJM.png">
+    </div>
+  </div>
+</body>
+<script>
+  $(".line").on("change", function() {
+    let line = $(this).val();
+    $.ajax({
+      url: '/cookie',
+      method: 'POST',
+      data: {
+        line: line
+        },
+      success: function(response) {
+        console.log('suc');
+        document.location.href = '/';
+      },
+      error: function(xhr, status, error) {
+        console.log('error');
+      }
+    });
+  });
+</script>
+</html>

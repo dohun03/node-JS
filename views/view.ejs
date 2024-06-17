@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <title>Node JS</title>
+    <style>
+    html { height: 100%; }
+    body { height: 100%; margin: 0; padding: 0; }
+    .__body__ { padding: 120px 340px 40px 340px; height:100%; background-color:#f0f0f0; overflow: auto; /* 내용이 넘칠 경우 스크롤바 표시 */ }
+    
+    /* 미디어 쿼리를 사용하여 화면 크기에 따라 스타일 변경 */
+    @media (max-width: 768px) {
+        .__body__ {
+            padding: 80px 20px; /* 작은 화면에서 패딩 조정 */
+        }
+    }
+    .navbar {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 1000;
+    }
+    .none {
+        display:none;
+    }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+        <img src="/dhoutside.png" style="width:30px;"> <!-- 이미지 경로 -->
+        <b><i>dhoutside.com</i></b>
+        </a>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+          <% if(authStatus){ %>
+          <li class="nav-item dropdown">
+            <div class="nav-link dropdown-toggle" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fa fa-user-circle-o" aria-hidden="true"></i> <b><%= authStatus %></b>님
+            </div>
+            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+              <li><a class="dropdown-item" href="/settings"><i class="fa fa-cog" aria-hidden="true"></i> 설정</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="/logout"><i class="fa fa-sign-out" aria-hidden="true"></i> 로그아웃</a></li>
+            </ul>
+          </li>
+          <% } else { %>
+          <li class="nav-item">
+          <a class="nav-link active" aria-current="page" href="/login"><i class="fa fa-user-circle-o" aria-hidden="true"></i> 로그인/회원가입</a>
+          </li>
+          <% } %>
+        </ul>
+        </div>
+    </div>
+    </nav>
+    <div class="__body__">
+      <h3 style="background-color:white; padding:10px; width:100%; margin-bottom:10px; font-weight:bold;"><%= data[0].subject %></h3>
+      <div style="padding:10px;"><b>작성자:</b> <%= data[0].user %></div>
+      <div style="background-color:white; padding:10px; width:100%; margin-bottom:10px; white-space: pre-line;"><%= data[0].content %></div>
+      <br>
+      <button class="btn btn-light <%= user?'likes':'' %> <%= active?'active':'' %>"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i> <span><%= likes.length %></span> 좋아요</button>
+      <div class="float-end">
+        <a href="/report?id=<%= id %>" class="<%= data[0].user==user?'none':'' %>"><button class="btn btn-sm btn-dark report"><i class="fa fa-bullhorn" aria-hidden="true"></i> 신고</button></a>
+        <a href="/edit?id=<%= id %>" class="<%= data[0].user!=user?'none':'' %>"><button class="btn btn-sm btn-success edit">Edit</button></a>
+        <a href="/delete?id=<%= id %>" class="<%= data[0].user!=user?'none':'' %>"><button class="btn btn-sm btn-danger delete">Delete</button></a>
+      </div>
+      <br><br>
+      <hr>
+      <div class="comment" style="margin-top:20px;">
+        <textarea class="form-control content" placeholder="댓글을 입력하세요"></textarea><br>
+        <button class="btn btn-sm btn-primary saveComments">댓글 저장</button>
+      </div>
+    </div>
+</body>
+<script>
+  $(".btn.likes").click( function(){
+    let status;
+    if( $(this).hasClass("active") ){
+        status = 'delete'
+        $(this).find("span").text( parseInt($(this).find("span").text()) - 1 )
+    } else {
+        status = 'add'
+        $(this).find("span").text( parseInt($(this).find("span").text()) + 1 )
+    }
+    $(this).toggleClass('active');
+
+    $.ajax({
+        url: '/likes',
+        method: 'POST',
+        data: { 
+          board: '<%=id%>',
+          status: status
+        },
+        success: function(response) {
+          console.log(response)
+        },
+        error: function(xhr, status, error) {
+          console.log(xhr, status, error);
+          alert("예기치 못한 에러가 발생 했습니다.")
+        }
+    });
+  });
+
+  $(".btn.saveComments").click( function(){
+    $.ajax({
+      url: '/comments',
+      method: 'POST',
+      data: { 
+        board: '<%=id%>',
+        status: status
+      },
+      success: function(response) {
+        console.log(response)
+      },
+      error: function(xhr, status, error) {
+        console.log(xhr, status, error);
+        alert("예기치 못한 에러가 발생 했습니다.")
+      }
+    });
+  })
+</script>
+</html>
