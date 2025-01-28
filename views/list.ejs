@@ -31,6 +31,12 @@
   </style>
 </head>
 <body>
+  <% 
+    let page_search = '';
+    if(search){
+      page_search = `search=${search}&`;
+    }
+  %>
   <nav class="navbar navbar-expand-lg bg-body-tertiary">
   <div class="container-fluid">
       <a class="navbar-brand" href="/">
@@ -61,68 +67,47 @@
   </nav>
   <div class="__body__">
     <div class="info" style="width:100%; margin-bottom: 10px;">
-        <a href="/edit"><button type="button" class="btn btn-dark" id="write-button"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> 글쓰기</button></a>                 
+        <a href="/edit"><button type="button" class="btn btn-dark" id="write-button"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> 글쓰기</button></a>
+        <button type="button" class="btn btn-light btn-sm" id="write-button"><i class="fa fa-sliders" aria-hidden="true"></i> 조회수</button>
+        <button type="button" class="btn btn-light btn-sm" id="write-button"><i class="fa fa-sliders" aria-hidden="true"></i> 좋아요</button>
         <select class="form-select form-select-sm line" aria-label="Small select example" style="display:inline; width:100px;">
           <%- selectOptionsHtml %>
         </select>
-        <form role="search" style="display:inline; margin-left:10px; margin-right:10px;">
-          <input class="form-control me-2" style="max-width:300px;display:inline;" type="search" placeholder="Search" aria-label="Search">
+        <form action="/" style="display:inline; margin-left:10px; margin-right:10px;">
+          <input class="form-control me-2" name="search" style="max-width:300px;display:inline;" type="text" placeholder="Search" value="<%=search%>">
           <button class="btn btn-outline-success" type="submit">Search</button>
         </form>
         <div class="float-end" id="pagination-controls"></div>
         <div class="float-end">
           <span style="margin-right:10px;"><%= currentPage %> / <%= page_total %></span>
-          <a href="<%= currentPage == 1 ? '#' : `/?page=${currentPage - 1}` %>"><button type="button" class="btn btn-dark" <%= currentPage == 1 ? 'disabled' : '' %>><i class="fa fa-arrow-left" aria-hidden="true"></i></button></a>
-          <a href="<%= page_total == currentPage ? '#' : `/?page=${currentPage + 1}` %>"><button type="button" class="btn btn-dark" <%= page_total == currentPage ? 'disabled' : '' %>><i class="fa fa-arrow-right" aria-hidden="true"></i></button></a>
+          <a href="<%= currentPage == 1 ? '#' : `/?${page_search}page=${currentPage - 1}` %>"><button type="button" class="btn btn-dark" <%= currentPage == 1 ? 'disabled' : '' %>><i class="fa fa-arrow-left" aria-hidden="true"></i></button></a>
+          <a href="<%= page_total == currentPage ? '#' : `/?${page_search}page=${currentPage + 1}` %>"><button type="button" class="btn btn-dark" <%= page_total == currentPage ? 'disabled' : '' %>><i class="fa fa-arrow-right" aria-hidden="true"></i></button></a>
       </div>
     </div>
     <table class="table table-hover" style="border: 1px solid #ccc;">
-        <col style="width:70%;"><col><col style="width:10%;">
+        <col style="width:65%;"><col><col style="width:10%;"><col style="width:10%;">
         <thead>
           <tr>
             <th scope="col">제목</th>
             <th style="text-align:center;" scope="col">작성자</th>
+            <th style="text-align:center;" scope="col">좋아요</th>
             <th style="text-align:center;" scope="col">조회수</th>
           </tr>
         </thead>
         <tbody class="table-group-divider">
+          <!-- DB data 불러와서 뿌려주기 -->
           <% data.forEach(item => { %>
             <tr>
               <td>
                 <a style="display:block; color:black; text-decoration-line: none; width:100%;" href="/view?id=<%= item.id %>"><%= item.subject %></a>
               </td>
               <td style="text-align:center;"><%= item.user %></td>
-              <td style="text-align:center;">523</td>
+              <td style="text-align:center;"><%= item.like_count %></td>
+              <td style="text-align:center;"><%= item.views %></td>
             </tr>
           <% }); %>
         </tbody>
     </table>
-    <div style="width:100%; background-color:white; padding:15px; border:5px solid black; border-radius:15px;">
-      <h3>2024.05.29 패치노트</h3>
-      <ul>
-        <li>EJS 템플릿 엔진을 사용하여 프론트와 백을 분리하는 작업</li>
-      </ul>
-      <hr/>
-      <h3>2024.05.17 패치노트</h3>
-      <ul>
-        <li>글 작성 시 작성자 아이디로 표기</li>
-        <li>글 작성은 로그인 했을 경우만 가능</li>
-      </ul>
-      <hr/>
-      <h3>2024.05.15 패치노트</h3>
-      <ul>
-        <li>로그인/회원가입 기능 완성</li>
-      </ul>
-      <hr/>
-      <h3>2024.04.23 패치노트</h3>
-      <ul>
-        <li>DHOUTSIDE 로고 추가(수제작)</li>
-        <li>줄(line) 설정 기능 추가</li>
-        <li>페이지 넘기기 기능 추가</li>
-        <li>수정 및 삭제는 작성자만 가능하도록 변경</li>
-      </ul>
-      <img src="/LJM.png">
-    </div>
   </div>
 </body>
 <script>
@@ -136,7 +121,7 @@
         },
       success: function(response) {
         console.log('suc');
-        document.location.href = '/';
+        document.location.href = "/";
       },
       error: function(xhr, status, error) {
         console.log('error');

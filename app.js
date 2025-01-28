@@ -4,11 +4,13 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const session = require('./lib/session.js');
 const db = require('./lib/db.js');
-const bodyParser = require('body-parser');
+// const bodyParser = require('body-parser');
 
 // 미들웨어 설정
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// app.use(bodyParser.json());
+// app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public'))); // 정적 파일 제공
 app.use(session);
@@ -32,26 +34,37 @@ app.get('/', (req, res) => {
     line = parseInt(req.cookies.line);
   }
 
-  db.query(`SELECT COUNT(*) FROM tbl_board`, function (error, countData) {
+  let where = '';
+  let params = [];
+  let search = req.query.search;
+  if(search){
+    where += `WHERE subject LIKE ? `;
+    params.push(`%${search}%`);
+  }
+  params.push(line * (page - 1), line);
+
+  // let sqlQuery = `SELECT *, COUNT(*) OVER() AS total FROM tbl_board ${where}order by id desc limit ?,?`;
+  let sqlQuery = `SELECT b.*, COUNT(*) OVER() AS total, COUNT(a.id) AS like_count FROM tbl_board b LEFT JOIN tbl_likes a ON b.id = a.board_id ${where}GROUP BY b.id ORDER BY b.id DESC LIMIT ?, ?;`;
+  db.query(sqlQuery, params, function (error, data) {
     if (error) {
       res.status(500).send('Internal Server Error');
+      console.error(error)
       return;
     }
-    const page_total = Math.ceil(parseInt(countData[0]['COUNT(*)']) / line);
-
-    db.query(`SELECT * FROM tbl_board order by id desc limit ?,?`, [line * (page - 1), line], function (error, data) {
-      if (error) {
-        res.status(500).send('Internal Server Error');
-        return;
-      }
-      let selectOptionsHtml = '';
-      const options = [5, 10, 50, 100];
-      options.forEach(option => {
-        const selected = option === line ? 'selected' : '';
-        selectOptionsHtml += `<option value="${option}" ${selected}>${option} 줄</option>`;
-      });
-      res.render('list', { data, page_total, selectOptionsHtml, currentPage: page, authStatus: authStatus(req, res)});
+    
+    let selectOptionsHtml = '';
+    const options = [5, 10, 50, 100];
+    options.forEach(option => {
+      const selected = option === line ? 'selected' : '';
+      selectOptionsHtml += `<option value="${option}" ${selected}>${option} 줄</option>`;
     });
+
+    let page_total = 0;
+    if(data.length > 0){
+      page_total = Math.ceil(parseInt(data[0]['total']) / line);
+    }
+    
+    res.render('list', { data, page_total, selectOptionsHtml, currentPage: page, search, authStatus: authStatus(req, res)});
   });
 });
 
@@ -73,7 +86,14 @@ app.get('/view', (req, res) => {
       return;
     }
     if (data && data.length > 0) {
-      
+      // 조회수 증가 쿼리
+      let views = data[0].views + 1;
+      db.query(`UPDATE tbl_board SET views=? WHERE id=?`, [views, id], function(error, data) {
+        if (error) {
+          res.status(500).send('Internal Server Error');
+          return;
+        }
+      });
       // 내가 좋아요 눌렀는지 여부
       let active;
       likes.forEach((value) => {
@@ -135,8 +155,8 @@ app.post('/write', (req, res) => {
   }
 });
 
-app.get('/delete', (req, res) => {
-  const id = req.query.id;
+app.delete('/delete', (req, res) => {
+  const { id } = req.body;
   const user = authStatus(req,res);
   db.query(`DELETE FROM tbl_board where id=? and user=?`, [id, user], function(error, data) {
     if (error) {
@@ -144,7 +164,8 @@ app.get('/delete', (req, res) => {
       return;
     }
 
-    res.redirect('/');
+    // res.redirect('/');
+    res.status(200).send('Delete success');
   });
 });
 
@@ -176,7 +197,7 @@ app.post('/likes', (req, res) => {
 
 app.get('/report', (req, res) => {
   res.render('report', { authStatus: authStatus(req, res) })
-})
+});
 
 app.post('/report_process', (req, res) => {
   let post = req.body;

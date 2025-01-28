@@ -68,7 +68,7 @@
       <div class="float-end">
         <a href="/report?id=<%= id %>" class="<%= data[0].user==user?'none':'' %>"><button class="btn btn-sm btn-dark report"><i class="fa fa-bullhorn" aria-hidden="true"></i> 신고</button></a>
         <a href="/edit?id=<%= id %>" class="<%= data[0].user!=user?'none':'' %>"><button class="btn btn-sm btn-success edit">Edit</button></a>
-        <a href="/delete?id=<%= id %>" class="<%= data[0].user!=user?'none':'' %>"><button class="btn btn-sm btn-danger delete">Delete</button></a>
+        <a class="<%= data[0].user!=user?'none':'' %>"><button class="btn btn-sm btn-danger delete">Delete</button></a>
       </div>
       <br><br>
       <hr>
@@ -79,6 +79,26 @@
     </div>
 </body>
 <script>
+  $(".btn.delete").click( function(){
+    console.log( "ID:"+ '<%=id%>', "USER:"+ '<%=user%>');
+    $.ajax({
+        url: '/delete',
+        type: 'DELETE',
+        data: { 
+          id: '<%=id%>',
+          user: '<%=user%>'
+        },
+        success: function(response) {
+          console.log(response)
+          window.location.href = '/';
+        },
+        error: function(xhr, status, error) {
+          console.log(xhr, status, error);
+          alert("예기치 못한 에러가 발생 했습니다.")
+        }
+    });
+  });
+
   $(".btn.likes").click( function(){
     let status;
     if( $(this).hasClass("active") ){
@@ -123,6 +143,6 @@
         alert("예기치 못한 에러가 발생 했습니다.")
       }
     });
-  })
+  });
 </script>
 </html>
