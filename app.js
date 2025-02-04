@@ -21,11 +21,19 @@ app.set('views', path.join(__dirname, 'views'));
 
 function authStatus(req, res) {
   if (req.session.is_logined) {
-    return req.session.username;
+    return { 
+      is_logined: true,
+      username: req.session.username,
+      user_id: req.session.user_id
+    }
   } else {
     return false;
   }
 }
+
+app.get('/header', (req, res) => {
+  res.render('header', {authStatus: authStatus(req, res)});  // 'header.ejs' 템플릿을 렌더링하여 응답
+});
 
 app.get('/', (req, res) => {
   let page = req.query.page ? parseInt(req.query.page) : 1;
@@ -43,8 +51,13 @@ app.get('/', (req, res) => {
   }
   params.push(line * (page - 1), line);
 
-  // let sqlQuery = `SELECT *, COUNT(*) OVER() AS total FROM tbl_board ${where}order by id desc limit ?,?`;
-  let sqlQuery = `SELECT b.*, COUNT(*) OVER() AS total, COUNT(a.id) AS like_count FROM tbl_board b LEFT JOIN tbl_likes a ON b.id = a.board_id ${where}GROUP BY b.id ORDER BY b.id DESC LIMIT ?, ?;`;
+  let sqlQuery = `SELECT B.*, 
+    COUNT(*) OVER() AS total, 
+    COUNT(DISTINCT L.id) AS like_count, 
+    COUNT(DISTINCT C.id) AS comment_count
+  FROM tbl_board B
+  LEFT JOIN tbl_likes L ON B.id = L.board_id
+  LEFT JOIN tbl_comment C ON B.id = C.board_id ${where}GROUP BY B.id ORDER BY B.id DESC LIMIT ?, ?;`;
   db.query(sqlQuery, params, function (error, data) {
     if (error) {
       res.status(500).send('Internal Server Error');
@@ -70,7 +83,8 @@ app.get('/', (req, res) => {
 
 app.get('/view', (req, res) => {
   const id = req.query.id;
-  const user = authStatus(req,res);
+  const user = authStatus(req,res).username;
+  // 좋아요 불러오기
   let likes;
   db.query(`SELECT user_id FROM tbl_likes where board_id=?`, [id], function(error, data) {
     if(error){
@@ -78,6 +92,16 @@ app.get('/view', (req, res) => {
       return;
     }
     likes = data;
+  });
+  
+  // 댓글 불러오기
+  let comment;
+  db.query(`SELECT b.*, a.username FROM tbl_comment b LEFT JOIN tbl_user a ON b.user_id = a.id WHERE board_id=? ORDER BY b.created_at ASC;`, [id], function(error, data) {
+    if (error) {
+      res.status(500).send('Internal Server Error');
+      return;
+    }
+    comment = data;
   });
   
   db.query(`SELECT * FROM tbl_board where id=?`, [id], function(error, data) {
@@ -100,7 +124,7 @@ app.get('/view', (req, res) => {
         if(value.user_id==user)
           active = true;
       });
-      res.render('view', { data, id, active, likes, user, authStatus: authStatus(req, res) });
+      res.render('view', { data, id, active, likes, comment, user, authStatus: authStatus(req, res) });
     } else {
       res.status(404).send("요청하신 게시글을 찾을 수 없습니다.");
     }
@@ -110,7 +134,7 @@ app.get('/view', (req, res) => {
 app.get('/edit', (req, res) => {
   if(req.session.is_logined){
     const id = req.query.id;
-    const user = authStatus(req,res);
+    const user = authStatus(req,res).username;
     if (id) {
       db.query(`SELECT * FROM tbl_board where id=?`, [id], function(error, data) {
         if (error) {
@@ -157,21 +181,19 @@ app.post('/write', (req, res) => {
 
 app.delete('/delete', (req, res) => {
   const { id } = req.body;
-  const user = authStatus(req,res);
+  const user = authStatus(req,res).username;
   db.query(`DELETE FROM tbl_board where id=? and user=?`, [id, user], function(error, data) {
     if (error) {
       res.status(500).send('Internal Server Error');
       return;
     }
-
-    // res.redirect('/');
     res.status(200).send('Delete success');
   });
 });
 
 app.post('/likes', (req, res) => {
   let post = req.body;
-  const user = authStatus(req,res);
+  const user = authStatus(req,res).username;
   // 누른건지 해제한건지 상태 확인, true면 삽입, false면 해제니까 delete.
   if(user) {
     if(post.status=='add'){
@@ -195,13 +217,67 @@ app.post('/likes', (req, res) => {
   }
 });
 
+app.post('/writeComment', (req, res) => {
+  let post = req.body;
+  if (post.status == 'create') {
+    db.query(`INSERT INTO tbl_comment (board_id, user_id, content) VALUES (?,?,?);`, [post.board_id, post.user_id, post.content], function(error, data) {
+      if (error) {
+        res.status(500).send('Internal Server Error');
+        console.log(error)
+        return;
+      }
+      // 방금 추가된 댓글의 ID를 가져와서 추가 정보를 조회하는 쿼리 실행
+      let insertedId = data.insertId;
+
+      // 새로 추가된 댓글의 추가 정보 조회
+      db.query(`
+        SELECT c.id, c.content, c.created_at, u.id AS user_id, u.username FROM tbl_comment c LEFT JOIN tbl_user u ON u.id = c.user_id WHERE c.id = ?;`, [insertedId], function(selectError, result) {
+        if (selectError) {
+          res.status(500).send('Internal Server Error');
+          console.log(selectError);
+          return;
+        }
+
+        // 결과 반환
+        res.send({
+          comment: result[0], // 첫 번째 댓글 정보 (조회된 결과)
+        });
+      });
+    });
+  } 
+  
+  // else if (post.status == 'update') {
+  //   db.query(`UPDATE tbl_board SET subject=?, content=?, user=? where id=?`, [post.subject, post.content, post.user, post.id], function(error, data) {
+  //     if (error) {
+  //       res.status(500).send('Internal Server Error');
+  //       return;
+  //     }
+  //     res.send();
+  //   });
+  // } 
+  else {
+    res.status(404).send('Not found, Go home');
+  }
+});
+
+app.delete('/deleteComment', (req, res) => {
+  let post = req.body;
+  db.query(`DELETE FROM tbl_comment where id=? and user_id=?`, [post.id, post.user_id], function(error, data) {
+    if (error) {
+      res.status(500).send('Internal Server Error');
+      return;
+    }
+    res.status(200).send('Delete success');
+  });
+});
+
 app.get('/report', (req, res) => {
   res.render('report', { authStatus: authStatus(req, res) })
 });
 
 app.post('/report_process', (req, res) => {
   let post = req.body;
-  res.render('error', { errorMessage:'신고가 접수ㅋ되었습니다.', authStatus: authStatus(req, res) } );
+  res.render('error', { errorMessage:'신고가 접수되었습니다.', authStatus: authStatus(req, res) } );
 });
 
 app.get('/login', (req, res) => {
@@ -210,13 +286,14 @@ app.get('/login', (req, res) => {
 
 app.post('/login_process', (req, res) => {
   let post = req.body;
-  db.query(`SELECT username, password FROM tbl_user WHERE username=?`,[post.username], function(error, data) {
+  db.query(`SELECT id, username, password FROM tbl_user WHERE username=?`,[post.username], function(error, data) {
     if(error){ //쿼리 자체에 문제가 생겼을 경우
       return;
     } else if(data && data.length > 0){ //쿼리 결과가 1개 이상 있을 경우
       if(data[0].username == post.username && data[0].password == post.password){
         req.session.is_logined = true;
         req.session.username = data[0].username;
+        req.session.user_id = data[0].id;
         req.session.save( function() {
           res.json({ success: true });
         })

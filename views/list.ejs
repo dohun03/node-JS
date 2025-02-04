@@ -37,34 +37,7 @@
       page_search = `search=${search}&`;
     }
   %>
-  <nav class="navbar navbar-expand-lg bg-body-tertiary">
-  <div class="container-fluid">
-      <a class="navbar-brand" href="/">
-      <img src="/dhoutside.png" style="width:30px;"> <!-- 이미지 경로 -->
-      <b><i>dhoutside.com</i></b>
-      </a>
-      <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-        <% if(authStatus){ %>
-        <li class="nav-item dropdown">
-          <div class="nav-link dropdown-toggle" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fa fa-user-circle-o" aria-hidden="true"></i> <b><%= authStatus %></b>님
-          </div>
-          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-            <li><a class="dropdown-item" href="/settings"><i class="fa fa-cog" aria-hidden="true"></i> 설정</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="/logout"><i class="fa fa-sign-out" aria-hidden="true"></i> 로그아웃</a></li>
-          </ul>
-        </li>
-        <% } else { %>
-        <li class="nav-item">
-        <a class="nav-link active" aria-current="page" href="/login"><i class="fa fa-user-circle-o" aria-hidden="true"></i> 로그인/회원가입</a>
-        </li>
-        <% } %>
-      </ul>
-      </div>
-  </div>
-  </nav>
+  <div class="__header__"></div>
   <div class="__body__">
     <div class="info" style="width:100%; margin-bottom: 10px;">
         <a href="/edit"><button type="button" class="btn btn-dark" id="write-button"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> 글쓰기</button></a>
@@ -74,8 +47,8 @@
           <%- selectOptionsHtml %>
         </select>
         <form action="/" style="display:inline; margin-left:10px; margin-right:10px;">
-          <input class="form-control me-2" name="search" style="max-width:300px;display:inline;" type="text" placeholder="Search" value="<%=search%>">
-          <button class="btn btn-outline-success" type="submit">Search</button>
+          <input class="form-control me-2" name="search" style="max-width:300px;display:inline;" type="text" placeholder="제목을 입력하세요" value="<%=search%>">
+          <button class="btn btn-outline-success" type="submit">검색</button>
         </form>
         <div class="float-end" id="pagination-controls"></div>
         <div class="float-end">
@@ -85,11 +58,12 @@
       </div>
     </div>
     <table class="table table-hover" style="border: 1px solid #ccc;">
-        <col style="width:65%;"><col><col style="width:10%;"><col style="width:10%;">
+        <col style="width:60%;"><col><col style="width:10%;"><col style="width:7%;"><col style="width:7%;">
         <thead>
           <tr>
             <th scope="col">제목</th>
             <th style="text-align:center;" scope="col">작성자</th>
+            <th style="text-align:center;" scope="col">작성일</th>
             <th style="text-align:center;" scope="col">좋아요</th>
             <th style="text-align:center;" scope="col">조회수</th>
           </tr>
@@ -99,9 +73,13 @@
           <% data.forEach(item => { %>
             <tr>
               <td>
-                <a style="display:block; color:black; text-decoration-line: none; width:100%;" href="/view?id=<%= item.id %>"><%= item.subject %></a>
+                <a style="display:block; color:black; text-decoration-line: none; width:100%;" href="/view?id=<%= item.id %>">
+                  <%= item.subject %>
+                  <span style="color:blue;"> <%= item.comment_count ? '['+item.comment_count+']' : '' %> </span>
+                </a>
               </td>
               <td style="text-align:center;"><%= item.user %></td>
+              <td style="text-align:center;"><%= item.data_created.toISOString().replace('T', ' ').substring(0, 10) %></td>
               <td style="text-align:center;"><%= item.like_count %></td>
               <td style="text-align:center;"><%= item.views %></td>
             </tr>
@@ -111,6 +89,10 @@
   </div>
 </body>
 <script>
+  fetch("/header")
+    .then(response => response.text())
+    .then(data => document.querySelector(".__header__").innerHTML = data);
+
   $(".line").on("change", function() {
     let line = $(this).val();
     $.ajax({
