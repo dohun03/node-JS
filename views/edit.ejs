@@ -51,26 +51,22 @@
 
   $(document).ready(function() {
     $('.save').click(function(e) {
-      
       e.preventDefault();
-      
       var subject = $('.subject').val();
       var content = $('.content').val();
 
       `<% if(status=='update'){ %>`
       $.ajax({
-        url: '/write',
-        method: 'POST',
+        url: '/boards/<%=id%>',
+        method: 'PUT',
         data: { 
-          id: '<%=id%>',
-          status: 'update',
           subject: subject, 
           content: content,
           user: '<%=user%>'
           },
         success: function(response) {
           console.log('suc');
-          document.location.href = '/view?id=<%=id%>';
+          document.location.href = '/boards/<%=id%>';
         },
         error: function(xhr, status, error) {
           console.log('error');
@@ -78,16 +74,15 @@
       });
       `<% } else if(status=='create'){ %>`
         $.ajax({
-          url: '/write',
+          url: '/boards',
           method: 'POST',
           data: { 
-            status: 'create',
             subject: subject, 
             content: content,
             user: '<%=user%>'
           },
           success: function(response) {
-            document.location.href = '/view?id='+response.insertId;
+            document.location.href = '/boards/'+response.insertId;
             console.log('suc');
           },
           error: function(xhr, status, error) {

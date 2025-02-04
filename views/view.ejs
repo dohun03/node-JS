@@ -47,7 +47,7 @@
     <button class="btn btn-light <%= user?'likes':'' %> <%= active?'active':'' %>"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i> <span><%= likes.length %></span> 좋아요</button>
     <div class="float-end">
       <a href="/report?id=<%= id %>" class="<%= data[0].user==user?'none':'' %>"><button class="btn btn-sm btn-dark report"><i class="fa fa-bullhorn" aria-hidden="true"></i> 신고</button></a>
-      <a href="/edit?id=<%= id %>" class="<%= data[0].user!=user?'none':'' %>"><button class="btn btn-sm btn-success edit">Edit</button></a>
+      <a href="/boards/<%= id %>/edit" class="<%= data[0].user!=user?'none':'' %>"><button class="btn btn-sm btn-success edit">Edit</button></a>
       <a class="<%= data[0].user!=user?'none':'' %>"><button class="btn btn-sm btn-danger delete">Delete</button></a>
     </div>
     <br><br>
@@ -85,12 +85,8 @@
   $(".btn.delete").click( function(){
     console.log( "ID:"+ '<%=id%>', "USER:"+ '<%=user%>');
     $.ajax({
-        url: '/delete',
-        type: 'DELETE',
-        data: { 
-          id: '<%=id%>',
-          user: '<%=user%>'
-        },
+        url: '/boards/<%=id%>',
+        method: 'DELETE',
         success: function(response) {
           console.log(response)
           window.location.href = '/';
@@ -105,7 +101,7 @@
   $(".btn.saveComment").click( function(){
     let content = $(".writeComment .content").val()
     $.ajax({
-      url: '/writeComment',
+      url: '/comments',
       method: 'POST',
       data: { 
         status: 'create',
@@ -141,47 +137,43 @@
   $(".btn.deleteComment").click( function(){
     const id = $(this).parent().parent(".comment").attr("id");
     $.ajax({
-        url: '/deleteComment',
-        type: 'DELETE',
-        data: { 
-          id: id,
-          user_id: '<%= authStatus.user_id %>'
-        },
-        success: function(response) {
-          console.log(response)
-        },
-        error: function(xhr, status, error) {
-          console.log(xhr, status, error);
-          alert("예기치 못한 에러가 발생 했습니다.")
-        }
+      url: '/comments',
+      method: 'DELETE',
+      data: { 
+        id: id,
+        user_id: '<%= authStatus.user_id %>'
+      },
+      success: function(response) {
+        console.log(response)
+      },
+      error: function(xhr, status, error) {
+        console.log(xhr, status, error);
+        alert("예기치 못한 에러가 발생 했습니다.")
+      }
     });
   });
 
   $(".btn.likes").click( function(){
     let status;
     if( $(this).hasClass("active") ){
-        status = 'delete'
-        $(this).find("span").text( parseInt($(this).find("span").text()) - 1 )
+      status = 'DELETE'
+      $(this).find("span").text( parseInt($(this).find("span").text()) - 1 )
     } else {
-        status = 'add'
-        $(this).find("span").text( parseInt($(this).find("span").text()) + 1 )
+      status = 'POST'
+      $(this).find("span").text( parseInt($(this).find("span").text()) + 1 )
     }
     $(this).toggleClass('active');
 
     $.ajax({
-        url: '/likes',
-        method: 'POST',
-        data: { 
-          board: '<%=id%>',
-          status: status
-        },
-        success: function(response) {
-          console.log(response)
-        },
-        error: function(xhr, status, error) {
-          console.log(xhr, status, error);
-          alert("예기치 못한 에러가 발생 했습니다.")
-        }
+      url: '/likes/<%=id%>',
+      method: status,
+      success: function(response) {
+        console.log(response)
+      },
+      error: function(xhr, status, error) {
+        console.log(xhr, status, error);
+        alert("예기치 못한 에러가 발생 했습니다.")
+      }
     });
   });
 </script>

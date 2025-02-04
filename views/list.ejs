@@ -40,7 +40,7 @@
   <div class="__header__"></div>
   <div class="__body__">
     <div class="info" style="width:100%; margin-bottom: 10px;">
-        <a href="/edit"><button type="button" class="btn btn-dark" id="write-button"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> 글쓰기</button></a>
+        <a href="/boards/new/edit"><button type="button" class="btn btn-dark" id="write-button"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> 글쓰기</button></a>
         <button type="button" class="btn btn-light btn-sm" id="write-button"><i class="fa fa-sliders" aria-hidden="true"></i> 조회수</button>
         <button type="button" class="btn btn-light btn-sm" id="write-button"><i class="fa fa-sliders" aria-hidden="true"></i> 좋아요</button>
         <select class="form-select form-select-sm line" aria-label="Small select example" style="display:inline; width:100px;">
@@ -73,7 +73,7 @@
           <% data.forEach(item => { %>
             <tr>
               <td>
-                <a style="display:block; color:black; text-decoration-line: none; width:100%;" href="/view?id=<%= item.id %>">
+                <a style="display:block; color:black; text-decoration-line: none; width:100%;" href="/boards/<%= item.id %>">
                   <%= item.subject %>
                   <span style="color:blue;"> <%= item.comment_count ? '['+item.comment_count+']' : '' %> </span>
                 </a>
