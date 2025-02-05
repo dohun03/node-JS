@@ -40,15 +40,15 @@
   <div class="__body__">
     <h3 style="background-color:white; padding:15px; width:100%; margin-bottom:10px; font-weight:bold;"><%= data[0].subject %></h3>
     <div style="padding:10px;">
-      <b>작성자:</b> <%= data[0].user %> | <b>작성일자:</b> <%= data[0].data_created.toISOString().replace('T', ' ').substring(0, 19) %>
+      <b>작성자:</b> <%= data[0].username %> | <b>작성일자:</b> <%= data[0].created_at.toISOString().replace('T', ' ').substring(0, 19) %>
     </div>
     <div style="background-color:white; padding:15px; width:100%; margin-bottom:10px; white-space: pre-line;"><%= data[0].content %></div>
     <br>
-    <button class="btn btn-light <%= user?'likes':'' %> <%= active?'active':'' %>"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i> <span><%= likes.length %></span> 좋아요</button>
+    <button class="btn btn-light <%= user_id?'likes':'' %> <%= active?'active':'' %>"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i> <span><%= likes.length %></span> 좋아요</button>
     <div class="float-end">
-      <a href="/report?id=<%= id %>" class="<%= data[0].user==user?'none':'' %>"><button class="btn btn-sm btn-dark report"><i class="fa fa-bullhorn" aria-hidden="true"></i> 신고</button></a>
-      <a href="/boards/<%= id %>/edit" class="<%= data[0].user!=user?'none':'' %>"><button class="btn btn-sm btn-success edit">Edit</button></a>
-      <a class="<%= data[0].user!=user?'none':'' %>"><button class="btn btn-sm btn-danger delete">Delete</button></a>
+      <a href="/report?id=<%= id %>" class="<%= data[0].user_id==user_id?'none':'' %>"><button class="btn btn-sm btn-dark report"><i class="fa fa-bullhorn" aria-hidden="true"></i> 신고</button></a>
+      <a href="/boards/<%= id %>/edit" class="<%= data[0].user_id!=user_id?'none':'' %>"><button class="btn btn-sm btn-success edit">게시글 수정</button></a>
+      <a class="<%= data[0].user_id!=user_id?'none':'' %>"><button class="btn btn-sm btn-danger delete">게시글 삭제</button></a>
     </div>
     <br><br>
     <hr>
@@ -63,8 +63,8 @@
           <% } %>
         </div>
         <div class="content" style="padding:10px; white-space: pre-line;"><%= item.content %></div>
+        <hr>
       </div>
-      <hr>
     <% }); %>
     </div>
     <% if(authStatus) { %>
@@ -83,7 +83,6 @@
     .then(data => document.querySelector(".__header__").innerHTML = data);
     
   $(".btn.delete").click( function(){
-    console.log( "ID:"+ '<%=id%>', "USER:"+ '<%=user%>');
     $.ajax({
         url: '/boards/<%=id%>',
         method: 'DELETE',
@@ -116,13 +115,13 @@
         let newComment = `
           <div class="comment" id="${response.comment.id}" style="margin-top:10px;">
             <div class="info" style="margin-top:10px;">
-              <span user_id="${response.comment.user_id}" style="padding:10px;"><b>${response.comment.username}</b></span>
+              <span user_id="${response.comment.user_id}" style="padding:10px;"><b>${response.comment.username}</b></span>|
               <span style="padding:10px;">${new Date(response.comment.created_at).toISOString().replace('T', ' ').substring(0, 19)}</span>
               <button type="button" class="btn btn-danger deleteComment" style="--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem;">댓글 삭제</button>
             </div>
             <div class="content" style="padding:10px; white-space: pre-line;">${response.comment.content}</div>
+            <hr>
           </div>
-          <hr>
         `;
         $(".comments").append(newComment);
         $(".writeComment .content").val("");
@@ -134,8 +133,9 @@
     });
   });
 
-  $(".btn.deleteComment").click( function(){
-    const id = $(this).parent().parent(".comment").attr("id");
+  $(".comments").on("click", ".btn.deleteComment", function() {
+    const commentElement = $(this).closest(".comment");
+    const id = commentElement.attr("id");
     $.ajax({
       url: '/comments',
       method: 'DELETE',
@@ -144,7 +144,8 @@
         user_id: '<%= authStatus.user_id %>'
       },
       success: function(response) {
-        console.log(response)
+        console.log(response);
+        commentElement.remove();  // 댓글 요소 삭제
       },
       error: function(xhr, status, error) {
         console.log(xhr, status, error);
@@ -168,7 +169,7 @@
       url: '/likes/<%=id%>',
       method: status,
       success: function(response) {
-        console.log(response)
+        console.log(response);
       },
       error: function(xhr, status, error) {
         console.log(xhr, status, error);

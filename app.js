@@ -19,8 +19,8 @@ function authStatus(req, res) {
   if (req.session.is_logined) {
     return { 
       is_logined: true,
-      username: req.session.username,
-      user_id: req.session.user_id
+      user_id: req.session.user_id,
+      username: req.session.username
     }
   } else {
     return false;
@@ -47,17 +47,17 @@ app.get('/', (req, res) => {
   }
   params.push(line * (page - 1), line);
 
-  let sqlQuery = `SELECT B.*, 
+  let sqlQuery = `SELECT B.*, U.username,
     COUNT(*) OVER() AS total, 
     COUNT(DISTINCT L.id) AS like_count, 
     COUNT(DISTINCT C.id) AS comment_count
   FROM tbl_board B
   LEFT JOIN tbl_likes L ON B.id = L.board_id
-  LEFT JOIN tbl_comment C ON B.id = C.board_id ${where}GROUP BY B.id ORDER BY B.id DESC LIMIT ?, ?;`;
+  LEFT JOIN tbl_comment C ON B.id = C.board_id
+  LEFT JOIN tbl_user U ON B.user_id = U.id ${where}GROUP BY B.id ORDER BY B.id DESC LIMIT ?, ?;`;
   db.query(sqlQuery, params, function (error, data) {
     if (error) {
       res.status(500).send('Internal Server Error');
-      console.error(error)
       return;
     }
     
@@ -72,81 +72,56 @@ app.get('/', (req, res) => {
     if(data.length > 0){
       page_total = Math.ceil(parseInt(data[0]['total']) / line);
     }
-    
     res.render('list', { data, page_total, selectOptionsHtml, currentPage: page, search, authStatus: authStatus(req, res)});
   });
 });
 
-// /view -> /boards 로 변경 ( RESTFUL )
-app.get('/boards/:id', (req, res) => {
-  const id = req.params.id;
-  const user = authStatus(req,res).username;
-  // 좋아요 불러오기
-  let likes;
-  db.query(`SELECT user_id FROM tbl_likes where board_id=?`, [id], function(error, data) {
-    if(error){
-      console.log(error);
-      return;
-    }
-    likes = data;
-  });
-  
-  // 댓글 불러오기
-  let comment;
-  db.query(`SELECT b.*, a.username FROM tbl_comment b LEFT JOIN tbl_user a ON b.user_id = a.id WHERE board_id=? ORDER BY b.created_at ASC;`, [id], function(error, data) {
-    if (error) {
-      res.status(500).send('Internal Server Error');
-      return;
-    }
-    comment = data;
-  });
-  
-  db.query(`SELECT * FROM tbl_board where id=?`, [id], function(error, data) {
-    if (error) {
-      res.status(500).send('Internal Server Error');
-      return;
-    }
+app.get('/boards/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const user_id = authStatus(req,res).user_id;
+    const username = authStatus(req,res).username;
+
+    // 쿼리 순차 실행 -> 병렬 실행(한번에 실행)
+    const [[likes], [comment], [data]] = await Promise.all([
+      db.promise().query(`SELECT user_id FROM tbl_likes WHERE board_id=?`, [id]),
+      db.promise().query(`SELECT b.*, a.username FROM tbl_comment b LEFT JOIN tbl_user a ON b.user_id = a.id WHERE board_id=? ORDER BY b.created_at ASC;`, [id]),
+      db.promise().query(`SELECT * FROM tbl_board WHERE id=?`, [id])
+    ]);
+
     if (data && data.length > 0) {
-      // 조회수 증가 쿼리
       let views = data[0].views + 1;
-      db.query(`UPDATE tbl_board SET views=? WHERE id=?`, [views, id], function(error, data) {
-        if (error) {
-          res.status(500).send('Internal Server Error');
-          return;
-        }
-      });
-      // 내가 좋아요 눌렀는지 여부
-      let active;
-      likes.forEach((value) => {
-        if(value.user_id==user)
-          active = true;
-      });
-      res.render('view', { data, id, active, likes, comment, user, authStatus: authStatus(req, res) });
+      await db.promise().query(`UPDATE tbl_board SET views=? WHERE id=?`, [views, id]);
+      let active = likes.some((value) => value.user_id === user_id);
+      res.render('view', { data, id, active, likes, comment, username, user_id, authStatus: authStatus(req, res) });
     } else {
       res.status(404).send("요청하신 게시글을 찾을 수 없습니다.");
     }
-  });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("서버 오류");
+  }
 });
 
-// /edit -> /boards/edit 로 변경 ( RESTFUL )
 app.get('/boards/:id/edit', (req, res) => {
   if(req.session.is_logined){
     const id = req.params.id != 'new' ? req.params.id : '';
-    const user = authStatus(req,res).username;
+    const user_id = authStatus(req,res).user_id;
+    console.log(user_id)
     if (id) {
       db.query(`SELECT * FROM tbl_board where id=?`, [id], function(error, data) {
         if (error) {
           res.status(500).send('Internal Server Error');
           return;
         }
-        if(data[0].user!=user) {
+        if(data[0].user_id!=user_id) {
           res.status(500).render('error', { errorMessage:'당신은 수정 권한이 없습니다.', authStatus: authStatus(req, res) } );
           return;
         }
-        res.render('edit', { data, id, user, status: 'update', authStatus: authStatus(req, res) });
+        res.render('edit', { data, id, user_id, status: 'update', authStatus: authStatus(req, res) });
       });
     } else {
-      res.render('edit', { data:'', user, status: 'create', authStatus: authStatus(req, res) });
+      res.render('edit', { data:'', user_id, status: 'create', authStatus: authStatus(req, res) });
     }
   } else {
     res.status(500).render('error', { errorMessage:'당신은 작성 권한이 없습니다. 로그인 후 이용 가능합니다.', authStatus: authStatus(req, res) } );
@@ -156,7 +131,7 @@ app.get('/boards/:id/edit', (req, res) => {
 
 app.post('/boards', (req, res) => {
   let post = req.body;
-  db.query(`INSERT INTO tbl_board (subject, content, user) VALUES (?,?,?);`, [post.subject, post.content, post.user], function(error, data) {
+  db.query(`INSERT INTO tbl_board (user_id, subject, content) VALUES (?,?,?);`, [post.user_id, post.subject, post.content], function(error, data) {
     if (error) {
       res.status(500).send('Internal Server Error');
       return;
@@ -168,9 +143,10 @@ app.post('/boards', (req, res) => {
 app.put('/boards/:id', (req, res) => {
   const id = req.params.id
   let post = req.body;
-  db.query(`UPDATE tbl_board SET subject=?, content=?, user=? where id=?`, [post.subject, post.content, post.user, id], function(error, data) {
+  db.query(`UPDATE tbl_board SET user_id=?, subject=?, content=? where id=?`, [post.user_id, post.subject, post.content, id], function(error, data) {
     if (error) {
       res.status(500).send('Internal Server Error');
+      console.log(error)
       return;
     }
     res.send();
@@ -179,8 +155,8 @@ app.put('/boards/:id', (req, res) => {
 
 app.delete('/boards/:id', (req, res) => {
   const id = req.params.id;
-  const user = authStatus(req,res).username;
-  db.query(`DELETE FROM tbl_board where id=? and user=?`, [id, user], function(error, data) {
+  const user_id = authStatus(req,res).user_id;
+  db.query(`DELETE FROM tbl_board where id=? and user_id=?`, [id, user_id], function(error, data) {
     if (error) {
       res.status(500).send('Internal Server Error');
       return;
@@ -191,9 +167,9 @@ app.delete('/boards/:id', (req, res) => {
 
 app.post('/likes/:id', (req, res) => {
   const id = req.params.id;
-  const user = authStatus(req,res).username;
-  if(user) {
-    db.query(`INSERT INTO tbl_likes(user_id,board_id) VALUES(?,?)`, [user, id], function(error, data) {
+  const user_id = authStatus(req,res).user_id;
+  if(user_id) {
+    db.query(`INSERT INTO tbl_likes(user_id,board_id) VALUES(?,?)`, [user_id, id], function(error, data) {
       if (error) {
         res.status(500).send('Internal Server Error');
         console.log(error);
@@ -208,9 +184,9 @@ app.post('/likes/:id', (req, res) => {
 
 app.delete('/likes/:id', (req, res) => {
   const id = req.params.id;
-  const user = authStatus(req,res).username;
-  if(user) {
-    db.query(`DELETE FROM tbl_likes WHERE user_id=? and board_id=?`, [user, id], function(error, data) {
+  const user_id = authStatus(req,res).user_id;
+  if(user_id) {
+    db.query(`DELETE FROM tbl_likes WHERE user_id=? and board_id=?`, [user_id, id], function(error, data) {
       if (error) {
         res.status(500).send('Internal Server Error');
         return;
@@ -254,14 +230,14 @@ app.delete('/comments', (req, res) => {
   });
 });
 
-app.get('/report', (req, res) => {
-  res.render('report', { authStatus: authStatus(req, res) })
-});
+// app.get('/report', (req, res) => {
+//   res.render('report', { authStatus: authStatus(req, res) })
+// });
 
-app.post('/report_process', (req, res) => {
-  let post = req.body;
-  res.render('error', { errorMessage:'신고가 접수되었습니다.', authStatus: authStatus(req, res) } );
-});
+// app.post('/report_process', (req, res) => {
+//   let post = req.body;
+//   res.render('error', { errorMessage:'신고가 접수되었습니다.', authStatus: authStatus(req, res) } );
+// });
 
 app.get('/login', (req, res) => {
   res.render('login', { authStatus: authStatus(req, res) })

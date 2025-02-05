@@ -78,8 +78,8 @@
                   <span style="color:blue;"> <%= item.comment_count ? '['+item.comment_count+']' : '' %> </span>
                 </a>
               </td>
-              <td style="text-align:center;"><%= item.user %></td>
-              <td style="text-align:center;"><%= item.data_created.toISOString().replace('T', ' ').substring(0, 10) %></td>
+              <td style="text-align:center;"><%= item.username %></td>
+              <td style="text-align:center;"><%= item.created_at.toISOString().replace('T', ' ').substring(0, 10) %></td>
               <td style="text-align:center;"><%= item.like_count %></td>
               <td style="text-align:center;"><%= item.views %></td>
             </tr>

@@ -34,14 +34,14 @@
   <div class="__header__"></div>
   <div class="__body__">
     <% if(data) { %>
-    <input class="form-control subject" value="<%= data[0].subject %>" placeholder="제목을 입력하세요" style="margin-bottom:10px;">
+    <input class="form-control subject" value="<%= data[0].subject %>" placeholder="제목을 입력하세요" maxlength="35" style="margin-bottom:10px;">
     <textarea class="form-control content" style="height:80%;"><%= data[0].content %></textarea>
     <% } else { %>
-    <input class="form-control subject" placeholder="제목을 입력하세요" style="margin-bottom:10px;">
+    <input class="form-control subject" placeholder="제목을 입력하세요" maxlength="35" style="margin-bottom:10px;">
     <textarea class="form-control content" style="height:80%;"></textarea>
     <% } %>
     <br>
-    <button class="btn btn-sm btn-primary save">Save</button>
+    <button class="btn btn-sm btn-primary save">게시글 저장</button>
   </div>
 </body>
 <script>
@@ -60,9 +60,9 @@
         url: '/boards/<%=id%>',
         method: 'PUT',
         data: { 
+          user_id: '<%=user_id%>',
           subject: subject, 
-          content: content,
-          user: '<%=user%>'
+          content: content
           },
         success: function(response) {
           console.log('suc');
@@ -73,22 +73,22 @@
         }
       });
       `<% } else if(status=='create'){ %>`
-        $.ajax({
-          url: '/boards',
-          method: 'POST',
-          data: { 
-            subject: subject, 
-            content: content,
-            user: '<%=user%>'
-          },
-          success: function(response) {
-            document.location.href = '/boards/'+response.insertId;
-            console.log('suc');
-          },
-          error: function(xhr, status, error) {
-            console.log(xhr, status, error);
-          }
-        });
+      $.ajax({
+        url: '/boards',
+        method: 'POST',
+        data: { 
+          user_id: '<%=user_id%>',
+          subject: subject, 
+          content: content
+        },
+        success: function(response) {
+          document.location.href = '/boards/'+response.insertId;
+          console.log('suc');
+        },
+        error: function(xhr, status, error) {
+          console.log(xhr, status, error);
+        }
+      });
       `<% } %>`
     });
   });
